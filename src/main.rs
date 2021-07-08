@@ -165,7 +165,23 @@ impl Chip8 {
             Opcode { d1: 0xF, d2, d3: 0, d4: 0x7 } => self.cpu.vx[d2 as usize] = self.hour.delay,
             Opcode { d1: 0xF, d2, d3: 0, d4: 0xA } => self.wait_for_key(window),
             Opcode { d1: 0xF, d2, d3: 0x1, d4: 0x5 } => self.hour.delay = self.cpu.vx[d2 as usize],
-            Opcode { d1: 0xF, d2, d3: 0x2, d4: 0x9 } => self.cpu.i = d2 * 5, 
+            Opcode { d1: 0xF, d2, d3: 0x1, d4: 0xE } => self.cpu.i += self.cpu.vx[d2 as usize] as u16,
+            Opcode { d1: 0xF, d2, d3: 0x2, d4: 0x9 } => self.cpu.i = d2 * 5,
+            Opcode { d1: 0xF, d2, d3: 0x3, d4: 0x3 } => {
+                self.ram[self.cpu.i as usize] = self.cpu.vx[d2 as usize] / 100;
+                self.ram[(self.cpu.i + 1) as usize] = self.cpu.vx[d2 as usize] % 100 / 10;
+                self.ram[(self.cpu.i + 1) as usize] = self.cpu.vx[d2 as usize] % 10;
+            }
+            Opcode { d1: 0xF, d2, d3: 0x5, d4: 0x5 } => {
+                for i in 0..d2 {
+                    self.ram[(i + self.cpu.i) as usize] = self.cpu.vx[i as usize];
+                }
+            }
+            Opcode { d1: 0xF, d2, d3: 0x6, d4: 0x5 } => {
+                for i in 0..d2 {
+                    self.cpu.vx[i as usize] = self.ram[(i + self.cpu.i) as usize];
+                }
+            }
             _ => println!("unexistent opcode {:#x}", opcode.d1 << 12 | opcode.d2 << 8 | opcode.d3 << 4 | opcode.d4)
         }
     }
@@ -194,16 +210,20 @@ impl Chip8 {
         for i in i..i + n {
             sprites.push(self.ram[i as usize]);
         }
-        let mut index = 0;
         self.cpu.vx[0xF] = 0;
-        for row in ycord..ycord.wrapping_add(n as u8)  as u8{
-            for col in xcord..xcord + n as u8 {
-                println!("{}, {}", xcord, ycord);
-                self.display[((row % HEIGHT as u8) as u16 * WIDTH as u16 + (col % WIDTH as u8) as u16) as usize] ^= 1 * 0xFFFFFF;
-                if self.display[(row % HEIGHT as u8) as usize * WIDTH + (col % WIDTH as u8) as usize] == 0 {
-                    self.cpu.vx[0xF] = 1;
+        
+        for j in 0..n {
+            let row = sprites[j as usize];
+            for i in 0..5 {
+                let new_value = row >> (7 - i) & 0x01;
+                if new_value == 1 {
+                    let xi = (x + i) as usize % WIDTH;
+                    let yi = (y + j as u8) as usize % HEIGHT;
+                    self.display[yi * WIDTH + xi] ^= 1 * 0xFFFFFF;
+                    if self.display[yi * WIDTH + xi] == 0 {
+                        self.cpu.vx[0xF] = 1;
+                    }
                 }
-                index += 1;
             }
         }
     }
@@ -269,7 +289,7 @@ impl Cpu {
             self.vx[0xF] = 0;
         }
 
-        self.vx[x as usize] *= 2;
+        self.vx[x as usize].wrapping_mul(2);
     }
 }
 
@@ -322,7 +342,7 @@ impl Timer {
 }
 
 fn main() {
-    let mut rom = File::open("roms/c8_test.c8").expect("there is no test rom");
+    let mut rom = File::open("roms/test_opcode.ch8").expect("there is no test rom");
     let mut data = Vec::<u8>::new();
     rom.read_to_end(&mut data).unwrap();
 
