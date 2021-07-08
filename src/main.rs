@@ -109,7 +109,6 @@ impl Chip8 {
             d4: (lb % 16) as u16
         };
 
-        self.cpu.pc += 2;
         match opcode {
             Opcode { d1:0, d2: 0, d3: 0x0E, d4: 0 } => self.clear_display(),
             Opcode { d1:0, d2: 0, d3: 0xE, d4: 0xE} => self.cpu.pc = self.stack.pop(),
@@ -182,8 +181,11 @@ impl Chip8 {
                     self.cpu.vx[i as usize] = self.ram[(i + self.cpu.i) as usize];
                 }
             }
-            _ => println!("unexistent opcode {:#x}", opcode.d1 << 12 | opcode.d2 << 8 | opcode.d3 << 4 | opcode.d4)
+            _ => {}
         }
+
+        
+        self.cpu.pc += 2;
     }
 
     fn clear_display(&mut self) {
@@ -217,8 +219,8 @@ impl Chip8 {
             for i in 0..5 {
                 let new_value = row >> (7 - i) & 0x01;
                 if new_value == 1 {
-                    let xi = (x + i) as usize % WIDTH;
-                    let yi = (y + j as u8) as usize % HEIGHT;
+                    let xi = (xcord + i) as usize % WIDTH;
+                    let yi = (ycord + j as u8) as usize % HEIGHT;
                     self.display[yi * WIDTH + xi] ^= 1 * 0xFFFFFF;
                     if self.display[yi * WIDTH + xi] == 0 {
                         self.cpu.vx[0xF] = 1;
