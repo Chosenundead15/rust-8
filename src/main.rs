@@ -117,18 +117,18 @@ impl Chip8 {
             Opcode { d1: 0x1, d2, d3, d4} => self.cpu.pc = (d2 << 8) | (d3 << 4) | (d4),
             Opcode { d1: 0x2, d2, d3, d4} => self.call_subroutine((d2 << 8) | (d3 << 4) | (d4)),
             Opcode { d1: 0x3, d2, d3, d4} => {
-                let kk = (opcode.d3 << 4) | opcode.d4;
-                if self.cpu.vx[opcode.d2 as usize] as u16 == kk{
+                let kk = (d3 << 4) | d4;
+                if self.cpu.vx[d2 as usize] as u16 == kk{
                     self.cpu.pc += 2
                 }
             }
             Opcode { d1: 0x4, d2, d3, d4} => {
-                let kk = (opcode.d3 << 4) | opcode.d4;
-                if self.cpu.vx[opcode.d2 as usize] as u16 != kk {
+                let kk = (d3 << 4) | d4;
+                if self.cpu.vx[d2 as usize] as u16 != kk {
                     self.cpu.pc += 2
                 }
             }
-            Opcode { d1:0x5, d2, d3, d4: 0} => {
+            Opcode { d1:0x5, d4: 0, ..} => {
                 if self.cpu.vx[opcode.d2 as usize] == self.cpu.vx[opcode.d3 as usize] {
                     self.cpu.pc += 2
                 }
@@ -141,10 +141,10 @@ impl Chip8 {
             Opcode { d1: 0x8, d2, d3, d4: 0x3 } => self.cpu.vx[d2 as usize] = self.cpu.vx[d2 as usize] ^ self.cpu.vx[d3 as usize],
             Opcode { d1: 0x8, d2, d3, d4: 0x4 } => self.cpu.add_registers(d2, d3),
             Opcode { d1: 0x8, d2, d3, d4: 0x5 } => self.cpu.substract_registers(d2, d3, d2),
-            Opcode { d1: 0x8, d2, d3, d4: 0x6 } => self.cpu.half_register(d2),
+            Opcode { d1: 0x8, d2, d4: 0x6, .. } => self.cpu.half_register(d2),
             Opcode { d1: 0x8, d2, d3, d4: 0x7 } => self.cpu.substract_registers(d3, d2, d2),
-            Opcode { d1: 0x8, d2, d3, d4: 0xE } => self.cpu.double_register(d2),
-            Opcode { d1: 0x9, d2, d3, d4: 0 } => {
+            Opcode { d1: 0x8, d2, d4: 0xE, .. } => self.cpu.double_register(d2),
+            Opcode { d1: 0x9, d4: 0, .. } => {
                 if self.cpu.vx[opcode.d2 as usize] != self.cpu.vx[opcode.d3 as usize] {
                     self.cpu.pc += 2
                 }
@@ -164,7 +164,7 @@ impl Chip8 {
                 }
             }
             Opcode { d1: 0xF, d2, d3: 0, d4: 0x7 } => self.cpu.vx[d2 as usize] = self.hour.delay,
-            Opcode { d1: 0xF, d2, d3: 0, d4: 0xA } => self.wait_for_key(window),
+            Opcode { d1: 0xF, d2, d3: 0, d4: 0xA } => self.wait_for_key(window, d2),
             Opcode { d1: 0xF, d2, d3: 0x1, d4: 0x5 } => self.hour.delay = self.cpu.vx[d2 as usize],
             Opcode { d1: 0xF, d2, d3: 0x1, d4: 0xE } => self.cpu.i += self.cpu.vx[d2 as usize] as u16,
             Opcode { d1: 0xF, d2, d3: 0x2, d4: 0x9 } => self.cpu.i = d2 * 5,
@@ -191,7 +191,6 @@ impl Chip8 {
         for i in self.display.iter_mut() {
             *i = 0xFFFFFF; // write something more funny here!
         }
-        println!("clearing screen");
     }
 
     fn call_subroutine(&mut self, address: u16) {
@@ -230,25 +229,17 @@ impl Chip8 {
         }
     }
 
-    fn wait_for_key(&mut self, window: &mut Window) {
+    fn wait_for_key(&mut self, window: &mut Window, register: u16) {
         for key in window.get_keys().unwrap().iter().enumerate() {
-            if key.0 > 0 {
-                self.cpu.vx[0xF] = self.match_key(*key.1).unwrap();
-                return;
+            if  window.is_key_down(*key.1){
+                self.cpu.vx[register as usize] = key.0 as u8;
+                return
             }
-        }
+    
         self.cpu.pc -= 2;
     }
-
-    fn match_key(&self, key_pressed: Key) -> Option<u8> {
-        self.keyboard.iter().find_map(|(key, value)| if *value == key_pressed {
-            return Some(key);
-        } else { return None; });
-
-        return None;
-    }
 }
-
+}
 
 impl Cpu {
     fn new() -> Self {
@@ -353,7 +344,7 @@ fn main() {
     chip8.load_sprites();
     chip8.load_rom(data);
 
-    let mut options = WindowOptions {
+    let options = WindowOptions {
         scale: Scale::X16,
         ..WindowOptions::default()
     };
