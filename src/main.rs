@@ -109,6 +109,9 @@ impl Chip8 {
             d4: (lb % 16) as u16
         };
 
+
+        self.cpu.pc += 2;
+
         match opcode {
             Opcode { d1:0, d2: 0, d3: 0x0E, d4: 0 } => self.clear_display(),
             Opcode { d1:0, d2: 0, d3: 0xE, d4: 0xE} => self.cpu.pc = self.stack.pop(),
@@ -183,16 +186,12 @@ impl Chip8 {
             }
             _ => {}
         }
-
-        
-        self.cpu.pc += 2;
     }
 
     fn clear_display(&mut self) {
         for i in self.display.iter_mut() {
             *i = 0xFFFFFF; // write something more funny here!
         }
-        println!("clearing screen");
     }
 
     fn call_subroutine(&mut self, address: u16) {
@@ -216,7 +215,7 @@ impl Chip8 {
         
         for j in 0..n {
             let row = sprites[j as usize];
-            for i in 0..5 {
+            for i in 0..8 {
                 let new_value = row >> (7 - i) & 0x01;
                 if new_value == 1 {
                     let xi = (xcord + i) as usize % WIDTH;
@@ -237,6 +236,8 @@ impl Chip8 {
                 return;
             }
         }
+
+        self.cpu.pc -= 2;
     }
 
     fn match_key(&self, key_pressed: Key) -> Option<u8> {
@@ -271,7 +272,7 @@ impl Cpu {
         } else {
             self.vx[0xF] = 0;
         }
-        self.vx[va as usize] = self.vx[va as usize].wrapping_sub(self.vx[vb as usize]);
+        self.vx[store as usize] = self.vx[va as usize].wrapping_sub(self.vx[vb as usize]);
     }
 
     fn half_register(&mut self, x: u16) {
@@ -291,7 +292,7 @@ impl Cpu {
             self.vx[0xF] = 0;
         }
 
-        self.vx[x as usize].wrapping_mul(2);
+        self.vx[x as usize] = self.vx[x as usize].wrapping_mul(2);
     }
 }
 
@@ -344,7 +345,7 @@ impl Timer {
 }
 
 fn main() {
-    let mut rom = File::open("roms/test_opcode.ch8").expect("there is no test rom");
+    let mut rom = File::open("roms/Tetris.ch8").expect("there is no test rom");
     let mut data = Vec::<u8>::new();
     rom.read_to_end(&mut data).unwrap();
 
@@ -352,7 +353,7 @@ fn main() {
     chip8.load_sprites();
     chip8.load_rom(data);
 
-    let mut options = WindowOptions {
+    let options = WindowOptions {
         scale: Scale::X16,
         ..WindowOptions::default()
     };
