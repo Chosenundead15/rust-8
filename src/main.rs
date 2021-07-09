@@ -325,7 +325,7 @@ impl Timer {
         let elapsed = self.hour.elapsed().unwrap();
         if self.delay > 0 && elapsed.as_secs_f32() >= 1.0 / 60.0 {
             self.delay -= 1;
-            self.hour = time::SystemTime::now(); 
+            self.hour = time::SystemTime::now();
         }
 
         if self.sound > 0 && elapsed.as_secs_f32() >= 1.0 / 60.0 {
@@ -356,10 +356,14 @@ fn main() {
         options
     ).unwrap();
 
+    let instructions_per_frame = 6;
+
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        chip8.run_instruction(window);
+        for _i in 0..instructions_per_frame {
+            chip8.run_instruction(window);
+        }
         chip8.hour.delay_countdown();
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window
