@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::Read, thread::sleep, time, u8};
+use std::{collections::HashMap, fs::File, io::Read, time, u8};
 
 use minifb::{Key, Scale, Window, WindowOptions};
 use rand::Rng;
@@ -109,6 +109,8 @@ impl Chip8 {
             d4: (lb % 16) as u16
         };
 
+        self.cpu.pc += 2;
+
         match opcode {
             Opcode { d1:0, d2: 0, d3: 0x0E, d4: 0 } => self.clear_display(),
             Opcode { d1:0, d2: 0, d3: 0xE, d4: 0xE} => self.cpu.pc = self.stack.pop(),
@@ -183,9 +185,6 @@ impl Chip8 {
             }
             _ => {}
         }
-
-        
-        self.cpu.pc += 2;
     }
 
     fn clear_display(&mut self) {
@@ -197,6 +196,7 @@ impl Chip8 {
 
     fn call_subroutine(&mut self, address: u16) {
         self.stack.add(address);
+        self.cpu.pc = address;
     }
 
     fn random_number(&mut self, vx: u16, kk: u16) {
@@ -216,12 +216,12 @@ impl Chip8 {
         
         for j in 0..n {
             let row = sprites[j as usize];
-            for i in 0..5 {
+            for i in 0..8 {
                 let new_value = row >> (7 - i) & 0x01;
                 if new_value == 1 {
                     let xi = (xcord + i) as usize % WIDTH;
                     let yi = (ycord + j as u8) as usize % HEIGHT;
-                    self.display[yi * WIDTH + xi] ^= 1 * 0xFFFFFF;
+                    self.display[yi * WIDTH + xi] ^= 0xFFFFFF;
                     if self.display[yi * WIDTH + xi] == 0 {
                         self.cpu.vx[0xF] = 1;
                     }
@@ -237,6 +237,7 @@ impl Chip8 {
                 return;
             }
         }
+        self.cpu.pc -= 2;
     }
 
     fn match_key(&self, key_pressed: Key) -> Option<u8> {
@@ -271,7 +272,7 @@ impl Cpu {
         } else {
             self.vx[0xF] = 0;
         }
-        self.vx[va as usize] = self.vx[va as usize].wrapping_sub(self.vx[vb as usize]);
+        self.vx[store as usize] = self.vx[va as usize].wrapping_sub(self.vx[vb as usize]);
     }
 
     fn half_register(&mut self, x: u16) {
@@ -291,7 +292,7 @@ impl Cpu {
             self.vx[0xF] = 0;
         }
 
-        self.vx[x as usize].wrapping_mul(2);
+        self.vx[x as usize] = self.vx[x as usize].wrapping_mul(2);
     }
 }
 
