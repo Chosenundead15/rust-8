@@ -194,7 +194,7 @@ impl Chip8 {
     }
 
     fn call_subroutine(&mut self, address: u16) {
-        self.stack.add(address);
+        self.stack.add(self.cpu.pc);
         self.cpu.pc = address;
     }
 
@@ -302,7 +302,7 @@ impl Stack {
 
     fn pop(&mut self) -> u16 {
         self.size -= 1;
-        self.mem[(self.size + 1) as usize]
+        self.mem[(self.size) as usize]
     }
 }
 
@@ -336,7 +336,7 @@ impl Timer {
 }
 
 fn main() {
-    let mut rom = File::open("roms/test_opcode.ch8").expect("there is no test rom");
+    let mut rom = File::open("roms/Tetris.ch8").expect("there is no test rom");
     let mut data = Vec::<u8>::new();
     rom.read_to_end(&mut data).unwrap();
 
