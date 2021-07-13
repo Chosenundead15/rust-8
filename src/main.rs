@@ -174,12 +174,12 @@ impl Chip8 {
                 self.ram[(self.cpu.i + 1) as usize] = self.cpu.vx[d2 as usize] % 10;
             }
             Opcode { d1: 0xF, d2, d3: 0x5, d4: 0x5 } => {
-                for i in 0..d2 {
+                for i in 0..=d2 {
                     self.ram[(i + self.cpu.i) as usize] = self.cpu.vx[i as usize];
                 }
             }
             Opcode { d1: 0xF, d2, d3: 0x6, d4: 0x5 } => {
-                for i in 0..d2 {
+                for i in 0..=d2 {
                     self.cpu.vx[i as usize] = self.ram[(i + self.cpu.i) as usize];
                 }
             }
@@ -336,7 +336,7 @@ impl Timer {
 }
 
 fn main() {
-    let mut rom = File::open("roms/Tetris.ch8").expect("there is no test rom");
+    let mut rom = File::open("roms/test_opcode.ch8").expect("there is no test rom");
     let mut data = Vec::<u8>::new();
     rom.read_to_end(&mut data).unwrap();
 
